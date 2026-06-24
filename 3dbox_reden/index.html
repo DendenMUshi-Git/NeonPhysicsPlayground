@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>3D BOX || Reden Quinto</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" href="./images/box.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./images/box.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./images/box.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="./images/box.png" />
+</head>
+<body>
+
+    <!-- ============================================ -->
+    <!-- LOADING OVERLAY (appears instantly)          -->
+    <!-- ============================================ -->
+    <div id="loading-overlay">
+        <div class="loader-container">
+            <!-- Skeleton icon / logo -->
+            <div class="loader-icon">⚡</div>
+
+            <!-- Skeleton placeholder (shimmer) -->
+            <div class="skeleton-box">
+                <div class="skeleton-shimmer"></div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar" id="progress-bar" style="width: 0%;"></div>
+            </div>
+
+            <!-- Percentage & status message -->
+            <div class="loader-status">
+                <span id="loader-percentage">0%</span>
+                <span id="loader-message">Loading Assets...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- MAIN APPLICATION (hidden until loaded)       -->
+    <!-- ============================================ -->
+    <div id="app-container" style="display: none;">
+        <!-- Control Panel (unchanged) -->
+        <div class="control-panel" id="controlPanel">
+            <div class="panel-header">
+                <div class="header-title">
+                    <span class="neon-logo">⚡</span>
+                    <h2>NEON CONTROLLER</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn small" id="minimize-btn" title="Minimize panel">─</button>
+                    <button class="icon-btn small" id="hide-btn" title="Hide panel">✕</button>
+                </div>
+            </div>
+
+            <div class="panel-content" id="panelContent">
+                <!-- Color Control -->
+                <div class="control-section">
+                    <div class="section-label">
+                        <span class="neon-dot"></span>
+                        <span>COLOR CONTROL</span>
+                    </div>
+                    <div class="control-row">
+                        <div class="control-with-label">
+                            <label for="color-picker" class="control-label">CUBE COLOR</label>
+                            <input type="color" id="color-picker" value="#ff3366" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="control-section">
+                    <div class="section-label">
+                        <span class="neon-dot"></span>
+                        <span>QUICK ACTIONS</span>
+                    </div>
+                    <div class="button-grid">
+                        <button id="reset-btn" class="action-btn">
+                            <span class="btn-icon">⟲</span>
+                            <span class="btn-text">RESET</span>
+                        </button>
+                        <button id="random-color-btn" class="action-btn">
+                            <span class="btn-icon">🎲</span>
+                            <span class="btn-text">RANDOM</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Physics & Explode -->
+                <div class="control-section">
+                    <div class="section-label">
+                        <span class="neon-dot"></span>
+                        <span>PHYSICS CONTROLS</span>
+                    </div>
+                    <div class="button-grid">
+                        <button id="add-box-btn" class="action-btn primary">
+                            <span class="btn-icon">📦</span>
+                            <span class="btn-text">ADD BOX</span>
+                        </button>
+                        <button id="explode-btn" class="action-btn explode">
+                            <span class="btn-icon">💥</span>
+                            <span class="btn-text">EXPLODE</span>
+                        </button>
+                    </div>
+                    <div class="button-grid" style="margin-top: 8px;">
+                        <button id="physics-toggle-btn" class="action-btn">
+                            <span class="btn-icon">⏸️</span>
+                            <span class="btn-text">PAUSE</span>
+                        </button>
+                        <button id="reset-physics-btn" class="action-btn">
+                            <span class="btn-icon">⟳</span>
+                            <span class="btn-text">RESET ALL</span>
+                        </button>
+                    </div>
+                    <div class="info-message">
+                        <span class="info-icon">📊</span>
+                        <span id="box-count">Boxes: 2 / 8</span>
+                    </div>
+                </div>
+
+                <!-- Texture Controls -->
+                <div class="control-section">
+                    <div class="section-label">
+                        <span class="neon-dot"></span>
+                        <span>TEXTURE</span>
+                    </div>
+                    <div class="texture-controls">
+                        <div class="upload-wrapper">
+                            <button id="upload-texture-btn" class="action-btn" style="flex:1;">
+                                <span class="btn-icon">🖼️</span>
+                                <span class="btn-text">UPLOAD IMAGE</span>
+                            </button>
+                            <input type="file" id="texture-input" accept="image/png,image/jpeg,image/webp" style="display:none;" />
+                            <button id="remove-texture-btn" class="action-btn" style="flex:1;">
+                                <span class="btn-icon">✕</span>
+                                <span class="btn-text">REMOVE</span>
+                            </button>
+                        </div>
+                        <div class="info-message" id="texture-status">
+                            <span class="info-icon">ℹ️</span>
+                            <span>Select a box then upload an image</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mode Selection -->
+                <div class="control-section">
+                    <div class="section-label">
+                        <span class="neon-dot"></span>
+                        <span>TOGGLE MODES</span>
+                    </div>
+
+                    <div class="mode-selector">
+                        <button id="camera-mode-btn" class="mode-toggle-btn active" data-mode="camera">
+                            <span class="mode-icon">🎥</span>
+                            <span class="mode-text">CAMERA</span>
+                            <span class="mode-badge">ACTIVE</span>
+                        </button>
+                        <button id="edit-mode-btn" class="mode-toggle-btn" data-mode="edit">
+                            <span class="mode-icon">📦</span>
+                            <span class="mode-text">EDIT</span>
+                            <span class="mode-badge">INACTIVE</span>
+                        </button>
+                    </div>
+
+                    <!-- Camera Controls -->
+                    <div class="mode-controls" id="camera-controls">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-icon pc-icon">🖱️</span>
+                                <span class="info-icon mobile-icon">👆</span>
+                                <span class="info-text">Rotate view</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon pc-icon">🖱️🖱️</span>
+                                <span class="info-icon mobile-icon">👆👆</span>
+                                <span class="info-text">Move view</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-icon pc-icon">🖱️⬆️</span>
+                                <span class="info-icon mobile-icon">🤌</span>
+                                <span class="info-text">Zoom</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Mode Controls -->
+                    <div class="mode-controls" id="edit-controls" style="display: none;">
+                        <div class="info-message" style="margin-bottom: 8px;">
+                            <span class="info-icon">🔵</span>
+                            <span>Click any box to select & move/rotate/scale</span>
+                        </div>
+                        <div class="edit-toolbar">
+                            <button id="translate-btn" class="tool-btn active" data-mode="translate">
+                                <span>🔵</span> MOVE
+                            </button>
+                            <button id="rotate-btn" class="tool-btn" data-mode="rotate">
+                                <span>🔄</span> ROTATE
+                            </button>
+                            <button id="scale-btn" class="tool-btn" data-mode="scale">
+                                <span>📐</span> SCALE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Effects -->
+                <div class="control-section">
+                    <div class="section-label">
+                        <span class="neon-dot"></span>
+                        <span>VISUAL EFFECTS</span>
+                    </div>
+                    <div class="toggles-grid">
+                        <label class="toggle-item">
+                            <span class="toggle-item-text">NEON LIGHTS</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="lighting-toggle" checked />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                        <label class="toggle-item">
+                            <span class="toggle-item-text">WIREFRAME</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="wireframe-toggle" />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                        <label class="toggle-item">
+                            <span class="toggle-item-text">AUTO ROTATE</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="auto-rotate-toggle" checked />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                        <label class="toggle-item">
+                            <span class="toggle-item-text">GRAVITY</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="gravity-toggle" checked />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-footer"></div>
+        </div>
+
+        <!-- Hidden panel indicator -->
+        <div class="hidden-panel-indicator" id="hiddenIndicator" style="display: none;">
+            <button class="show-panel-btn" id="showPanelBtn">
+                <span class="neon-logo">⚡</span>
+            </button>
+        </div>
+
+        <!-- Minimized indicator -->
+        <div class="minimized-indicator" id="minimizedIndicator" style="display: none;">
+            <button class="restore-panel-btn" id="restorePanelBtn">
+                <span class="neon-logo">⚡</span>
+            </button>
+        </div>
+
+        <!-- Mode indicator -->
+        <div class="mode-indicator" id="modeIndicator">
+            <span class="indicator-label">MODE:</span>
+            <span class="indicator-value" id="currentMode">CAMERA</span>
+        </div>
+
+        <!-- Selection indicator -->
+        <div class="selection-indicator" id="selectionIndicator" style="display: none;">
+            <span id="selectedInfo">📦 Box 1 selected</span>
+        </div>
+    </div>
+
+    <!-- Import Maps -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.126.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.126.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
+
+    <!-- Main script (module) -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
