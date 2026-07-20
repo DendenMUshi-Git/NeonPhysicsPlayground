@@ -670,3 +670,113 @@ input:checked + .toggle-slider::before {
         width: 340px;
     }
 }
+
+/* ============================================
+   NEW PLAYER MODE & EXTRA BUTTONS (ADDITIONS)
+   ============================================ */
+
+/* Player mode button (already inherits .mode-toggle-btn) */
+.mode-toggle-btn[data-mode="player"] {
+    background: rgba(0, 40, 20, 0.6);
+    border-color: #00ff88;
+}
+.mode-toggle-btn[data-mode="player"].active {
+    background: rgba(0, 255, 136, 0.25);
+    border-color: #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* Player controls panel */
+#player-controls {
+    background: rgba(0, 20, 30, 0.7);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 8px;
+    border-left: 2px solid #00ff88;
+}
+
+/* Toggle items inside player controls */
+#player-controls .toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#player-controls .toggle-item:last-child {
+    border-bottom: none;
+}
+#player-controls .toggle-item-text {
+    font-size: 0.75rem;
+    color: #88aaff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Bullet spread slider custom styling */
+#player-controls input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: linear-gradient(90deg, #3366aa, #00ff88);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+#player-controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: #00ff88;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    cursor: pointer;
+}
+#player-controls input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: #00ff88;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    cursor: pointer;
+}
+
+/* Duplicate & Delete buttons (already use .action-btn) */
+#duplicate-btn {
+    background: rgba(0, 200, 255, 0.2);
+    border-color: #33ccff;
+}
+#duplicate-btn:hover {
+    background: rgba(0, 200, 255, 0.4);
+}
+#delete-btn {
+    background: rgba(255, 50, 50, 0.2);
+    border-color: #ff4444;
+}
+#delete-btn:hover {
+    background: rgba(255, 50, 50, 0.4);
+}
+
+/* Optional: adjust grid for 4 buttons (quick actions) – already .button-grid is 2 columns, but we can make it 4 on wider screens */
+@media (min-width: 480px) {
+    .button-grid {
+        grid-template-columns: 1fr 1fr 1fr 1fr; /* four columns for duplicate/delete */
+    }
+}
+
+/* Ensure info-message inside player controls looks consistent */
+#player-controls .info-message {
+    background: rgba(0, 255, 136, 0.08);
+    border-left: 2px solid #00ff88;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #aaddff;
+}
+
+/* Selection indicator – when in player mode, show green accent */
+.selection-indicator.player-mode {
+    border-color: #00ff88;
+    background: rgba(0, 255, 136, 0.15);
+}
