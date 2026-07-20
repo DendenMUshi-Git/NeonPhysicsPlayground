@@ -15,24 +15,17 @@
 <body>
 
     <!-- ============================================ -->
-    <!-- LOADING OVERLAY (appears instantly)          -->
+    <!-- LOADING OVERLAY                              -->
     <!-- ============================================ -->
     <div id="loading-overlay">
         <div class="loader-container">
-            <!-- Skeleton icon / logo -->
             <div class="loader-icon">⚡</div>
-
-            <!-- Skeleton placeholder (shimmer) -->
             <div class="skeleton-box">
                 <div class="skeleton-shimmer"></div>
             </div>
-
-            <!-- Progress bar -->
             <div class="progress-bar-wrapper">
                 <div class="progress-bar" id="progress-bar" style="width: 0%;"></div>
             </div>
-
-            <!-- Percentage & status message -->
             <div class="loader-status">
                 <span id="loader-percentage">0%</span>
                 <span id="loader-message">Loading Assets...</span>
@@ -41,10 +34,10 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- MAIN APPLICATION (hidden until loaded)       -->
+    <!-- MAIN APPLICATION                             -->
     <!-- ============================================ -->
     <div id="app-container" style="display: none;">
-        <!-- Control Panel (unchanged) -->
+        <!-- Control Panel -->
         <div class="control-panel" id="controlPanel">
             <div class="panel-header">
                 <div class="header-title">
@@ -86,6 +79,14 @@
                         <button id="random-color-btn" class="action-btn">
                             <span class="btn-icon">🎲</span>
                             <span class="btn-text">RANDOM</span>
+                        </button>
+                        <button id="duplicate-btn" class="action-btn primary">
+                            <span class="btn-icon">📋</span>
+                            <span class="btn-text">DUPLICATE</span>
+                        </button>
+                        <button id="delete-btn" class="action-btn explode">
+                            <span class="btn-icon">🗑️</span>
+                            <span class="btn-text">DELETE</span>
                         </button>
                     </div>
                 </div>
@@ -165,6 +166,11 @@
                             <span class="mode-text">EDIT</span>
                             <span class="mode-badge">INACTIVE</span>
                         </button>
+                        <button id="player-mode-btn" class="mode-toggle-btn" data-mode="player">
+                            <span class="mode-icon">🎮</span>
+                            <span class="mode-text">PLAYER</span>
+                            <span class="mode-badge">INACTIVE</span>
+                        </button>
                     </div>
 
                     <!-- Camera Controls -->
@@ -204,6 +210,26 @@
                             <button id="scale-btn" class="tool-btn" data-mode="scale">
                                 <span>📐</span> SCALE
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Player Mode Controls -->
+                    <div class="mode-controls" id="player-controls" style="display: none;">
+                        <div class="info-message">
+                            <span class="info-icon">🎮</span>
+                            <span>WASD to move | SPACE to jump | Click to shoot</span>
+                        </div>
+                        <div class="toggle-item" style="margin-top: 8px;">
+                            <span class="toggle-item-text">Camera Follow</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="follow-toggle" checked />
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 8px; align-items: center;">
+                            <span style="font-size: 0.7rem; color: #88aaff;">Bullet spread</span>
+                            <input type="range" id="bullet-spread" min="0" max="0.5" step="0.01" value="0.1" style="flex:1;" />
+                            <span style="font-size: 0.7rem; color: #88aaff;" id="bullet-count-label">5</span>
                         </div>
                     </div>
                 </div>
