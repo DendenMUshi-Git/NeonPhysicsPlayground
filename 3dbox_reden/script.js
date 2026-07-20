@@ -61,6 +61,18 @@ let ambientParticles;
 let pointLight;
 let clock = { getDelta: () => 0 }; // placeholder
 
+// ---------- NEW PLAYER MODE GLOBALS ----------
+let playerMode = false;
+let playerBox = null;
+let followPlayer = true;
+let bullets = [];
+let keys = { w: false, a: false, s: false, d: false, space: false };
+const BULLET_LIFETIME = 2.0;
+const BULLET_SPEED = 25;
+const BULLET_COUNT = 5;
+let bulletSpread = 0.1;
+let isShooting = false;
+
 // ============================================
 // HELPERS
 // ============================================
@@ -469,6 +481,85 @@ function removeTextureFromBox(box) {
 }
 
 // ============================================
+// PLAYER CONTROL FUNCTIONS (NEW)
+// ============================================
+
+function updatePlayer(delta) {
+    if (!playerBox || !playerMode) return;
+    const body = playerBox.body;
+    // Get forward and right directions from body quaternion
+    const quat = body.quaternion;
+    const forward = new CANNON.Vec3(0, 0, -1);
+    const right = new CANNON.Vec3(1, 0, 0);
+    quat.vmult(forward, forward);
+    quat.vmult(right, right);
+
+    const forceMagnitude = 8; // Newtons
+    const force = new CANNON.Vec3(0, 0, 0);
+    if (keys.w) force.add(forward.scale(forceMagnitude));
+    if (keys.s) force.add(forward.scale(-forceMagnitude));
+    if (keys.a) force.add(right.scale(-forceMagnitude));
+    if (keys.d) force.add(right.scale(forceMagnitude));
+    body.applyForce(force, body.position);
+
+    // Jump
+    if (keys.space) {
+        // Check if on ground: velocity.y ~ 0 and position near ground
+        if (Math.abs(body.velocity.y) < 0.1 && body.position.y < 0.5) {
+            body.velocity.y = 6; // jump impulse
+        }
+    }
+
+    // Limit horizontal speed
+    const horizVel = new CANNON.Vec3(body.velocity.x, 0, body.velocity.z);
+    const maxSpeed = 6;
+    if (horizVel.norm() > maxSpeed) {
+        horizVel.normalize().scale(maxSpeed);
+        body.velocity.x = horizVel.x;
+        body.velocity.z = horizVel.z;
+    }
+}
+
+function shootBullets() {
+    if (!playerBox) return;
+    const playerPos = playerBox.body.position;
+    const cameraDir = new THREE.Vector3();
+    camera.getWorldDirection(cameraDir);
+    for (let i = 0; i < BULLET_COUNT; i++) {
+        const spread = bulletSpread;
+        const dir = cameraDir.clone();
+        dir.x += (Math.random() - 0.5) * spread;
+        dir.y += (Math.random() - 0.5) * spread;
+        dir.z += (Math.random() - 0.5) * spread;
+        dir.normalize();
+
+        const bulletRadius = 0.08;
+        const geo = new THREE.SphereGeometry(bulletRadius, 8, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff6600, emissiveIntensity: 0.5 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        const startPos = new CANNON.Vec3(playerPos.x, playerPos.y + 0.5, playerPos.z);
+        mesh.position.copy(startPos);
+        scene.add(mesh);
+
+        const shape = new CANNON.Sphere(bulletRadius);
+        const body = new CANNON.Body({ mass: 0.05, shape: shape });
+        body.position.copy(startPos);
+        const speed = BULLET_SPEED * (0.9 + Math.random() * 0.2);
+        body.velocity.set(dir.x * speed, dir.y * speed, dir.z * speed);
+        world.addBody(body);
+
+        const bulletData = {
+            mesh: mesh,
+            body: body,
+            timer: 0,
+            lifetime: BULLET_LIFETIME
+        };
+        bullets.push(bulletData);
+    }
+}
+
+// ============================================
 // UI SETUP
 // ============================================
 
@@ -476,8 +567,10 @@ async function setupUIAndEvents() {
     const ui = {
         cameraModeBtn: document.getElementById('camera-mode-btn'),
         editModeBtn: document.getElementById('edit-mode-btn'),
+        playerModeBtn: document.getElementById('player-mode-btn'),
         cameraControls: document.getElementById('camera-controls'),
         editControls: document.getElementById('edit-controls'),
+        playerControls: document.getElementById('player-controls'),
         translateBtn: document.getElementById('translate-btn'),
         rotateBtn: document.getElementById('rotate-btn'),
         scaleBtn: document.getElementById('scale-btn'),
@@ -502,42 +595,81 @@ async function setupUIAndEvents() {
         resetPhysicsBtn: document.getElementById('reset-physics-btn'),
         uploadTextureBtn: document.getElementById('upload-texture-btn'),
         removeTextureBtn: document.getElementById('remove-texture-btn'),
-        textureInput: document.getElementById('texture-input')
+        textureInput: document.getElementById('texture-input'),
+        // New player UI
+        followToggle: document.getElementById('follow-toggle'),
+        bulletSpreadInput: document.getElementById('bullet-spread'),
+        duplicateBtn: document.getElementById('duplicate-btn'),
+        deleteBtn: document.getElementById('delete-btn'),
     };
 
     function setActiveMode(mode) {
         activeMode = mode;
         ui.cameraModeBtn.classList.toggle('active', mode === 'camera');
         ui.editModeBtn.classList.toggle('active', mode === 'edit');
-        const cameraBadge = ui.cameraModeBtn.querySelector('.mode-badge');
-        const editBadge = ui.editModeBtn.querySelector('.mode-badge');
-        if (cameraBadge) cameraBadge.textContent = mode === 'camera' ? 'ACTIVE' : 'INACTIVE';
-        if (editBadge) editBadge.textContent = mode === 'edit' ? 'ACTIVE' : 'INACTIVE';
+        ui.playerModeBtn.classList.toggle('active', mode === 'player');
+
+        const badges = {
+            camera: ui.cameraModeBtn.querySelector('.mode-badge'),
+            edit: ui.editModeBtn.querySelector('.mode-badge'),
+            player: ui.playerModeBtn.querySelector('.mode-badge')
+        };
+        badges.camera.textContent = mode === 'camera' ? 'ACTIVE' : 'INACTIVE';
+        badges.edit.textContent = mode === 'edit' ? 'ACTIVE' : 'INACTIVE';
+        badges.player.textContent = mode === 'player' ? 'ACTIVE' : 'INACTIVE';
+
         ui.cameraControls.style.display = mode === 'camera' ? 'block' : 'none';
         ui.editControls.style.display = mode === 'edit' ? 'block' : 'none';
-        ui.currentModeSpan.textContent = mode === 'camera' ? 'CAMERA' : 'EDIT';
+        ui.playerControls.style.display = mode === 'player' ? 'block' : 'none';
+        ui.currentModeSpan.textContent = mode.toUpperCase();
+
+        // Common setup
         if (mode === 'camera') {
             orbitControls.enabled = true;
             transformControls.enabled = false;
             document.getElementById('selectionIndicator').style.display = 'none';
             renderer.domElement.style.cursor = 'default';
             window.selectBox(-1);
-        } else {
+            playerMode = false;
+            playerBox = null;
+        } else if (mode === 'edit') {
             orbitControls.enabled = false;
-            if (selectedBox) {
-                transformControls.enabled = true;
-                document.getElementById('selectionIndicator').style.display = 'block';
-            } else {
-                transformControls.enabled = false;
-                document.getElementById('selectionIndicator').style.display = 'none';
-            }
+            transformControls.enabled = (selectedBox !== null);
+            document.getElementById('selectionIndicator').style.display = selectedBox ? 'block' : 'none';
             renderer.domElement.style.cursor = 'pointer';
-            showNotification('📦 Click any box to select & transform');
+            playerMode = false;
+            playerBox = null;
+        } else if (mode === 'player') {
+            orbitControls.enabled = false;
+            transformControls.enabled = false;
+            transformControls.detach();
+            // If no box selected, auto-select first
+            if (!selectedBox && boxes.length > 0) {
+                window.selectBox(0);
+            }
+            if (selectedBox) {
+                playerBox = selectedBox;
+                playerBox.mesh.material.emissiveIntensity = 0.8;
+                playerBox.mesh.material.emissive.set(0x00ff88);
+                document.getElementById('selectionIndicator').style.display = 'block';
+                document.getElementById('selectedInfo').textContent = `🎮 Player Box ${selectedIndex+1}`;
+            } else {
+                showNotification('⚠️ No boxes to control! Add one first.');
+                activeMode = 'camera';
+                setActiveMode('camera');
+                return;
+            }
+            playerMode = true;
+            renderer.domElement.style.cursor = 'crosshair';
+            orbitControls.enabled = false;
+            transformControls.enabled = false;
+            showNotification('🎮 Player mode active! WASD to move, SPACE jump, click to shoot');
         }
     }
 
     ui.cameraModeBtn.addEventListener('click', () => setActiveMode('camera'));
     ui.editModeBtn.addEventListener('click', () => setActiveMode('edit'));
+    ui.playerModeBtn.addEventListener('click', () => setActiveMode('player'));
 
     ui.translateBtn.addEventListener('click', () => {
         transformControls.setMode('translate');
@@ -556,6 +688,31 @@ async function setupUIAndEvents() {
         ui.scaleBtn.classList.add('active');
         ui.translateBtn.classList.remove('active');
         ui.rotateBtn.classList.remove('active');
+    });
+
+    // Duplicate selected box
+    ui.duplicateBtn.addEventListener('click', () => {
+        if (!selectedBox) { showNotification('⚠️ Select a box first'); return; }
+        if (boxes.length >= 8) { showNotification('⚠️ Max 8 boxes'); return; }
+        const pos = selectedBox.mesh.position.clone();
+        pos.x += 1.2;
+        const color = selectedBox.defaultColor;
+        window.createPhysicsBox(pos, color);
+        showNotification('📋 Duplicated!');
+    });
+
+    // Delete selected box
+    ui.deleteBtn.addEventListener('click', () => {
+        if (!selectedBox) { showNotification('⚠️ Select a box first'); return; }
+        const index = boxes.indexOf(selectedBox);
+        if (index === -1) return;
+        world.removeBody(selectedBox.body);
+        scene.remove(selectedBox.mesh);
+        if (selectedBox.texture) selectedBox.texture.dispose();
+        boxes.splice(index, 1);
+        window.selectBox(-1);
+        updateBoxCount();
+        showNotification('🗑️ Box deleted');
     });
 
     ui.addBoxBtn.addEventListener('click', () => {
@@ -690,8 +847,45 @@ async function setupUIAndEvents() {
         removeTextureFromBox(selectedBox);
     });
 
+    // Player UI events
+    ui.followToggle.addEventListener('change', (e) => {
+        followPlayer = e.target.checked;
+    });
+    ui.bulletSpreadInput.addEventListener('input', (e) => {
+        bulletSpread = parseFloat(e.target.value);
+        document.getElementById('bullet-count-label').textContent = Math.round(5 + (1 - bulletSpread) * 10);
+    });
+
     setActiveMode('camera');
 }
+
+// ============================================
+// KEYBOARD & MOUSE LISTENERS (PLAYER MODE)
+// ============================================
+
+document.addEventListener('keydown', (e) => {
+    if (activeMode !== 'player') return;
+    switch(e.code) {
+        case 'KeyW': keys.w = true; e.preventDefault(); break;
+        case 'KeyA': keys.a = true; e.preventDefault(); break;
+        case 'KeyS': keys.s = true; e.preventDefault(); break;
+        case 'KeyD': keys.d = true; e.preventDefault(); break;
+        case 'Space': keys.space = true; e.preventDefault(); break;
+    }
+});
+document.addEventListener('keyup', (e) => {
+    if (activeMode !== 'player') return;
+    switch(e.code) {
+        case 'KeyW': keys.w = false; e.preventDefault(); break;
+        case 'KeyA': keys.a = false; e.preventDefault(); break;
+        case 'KeyS': keys.s = false; e.preventDefault(); break;
+        case 'KeyD': keys.d = false; e.preventDefault(); break;
+        case 'Space': keys.space = false; e.preventDefault(); break;
+    }
+});
+
+// Shooting via left-click on canvas (added after renderer is created)
+// We'll add the listener inside the initialization after renderer exists.
 
 // ============================================
 // EXPLOSION FEATURE
@@ -872,7 +1066,7 @@ function updateExplosionEffects(delta) {
 }
 
 // ============================================
-// ANIMATION LOOP (using performance.now())
+// ANIMATION LOOP
 // ============================================
 
 let prevTime = performance.now();
@@ -881,7 +1075,7 @@ function animate() {
     requestAnimationFrame(animate);
 
     const now = performance.now();
-    let delta = Math.min((now - prevTime) / 1000, 0.05); // clamp to 50ms max
+    let delta = Math.min((now - prevTime) / 1000, 0.05);
     prevTime = now;
 
     if (!physicsPaused) {
@@ -892,12 +1086,49 @@ function animate() {
                 box.mesh.quaternion.copy(box.body.quaternion);
             }
         });
+
+        // Player update
+        if (playerMode) {
+            updatePlayer(delta);
+        }
+
+        // Update bullets
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            const bullet = bullets[i];
+            bullet.timer += delta;
+            bullet.mesh.position.copy(bullet.body.position);
+            if (bullet.timer > bullet.lifetime || bullet.body.position.length() > 30) {
+                world.removeBody(bullet.body);
+                scene.remove(bullet.mesh);
+                bullets.splice(i, 1);
+            }
+        }
     }
 
     updateExplosionEffects(delta);
 
     if (ambientParticles) {
         ambientParticles.rotation.y += 0.0003;
+    }
+
+    // Camera follow for player
+    if (followPlayer && playerBox && playerMode) {
+        const pos = playerBox.body.position;
+        const quat = playerBox.body.quaternion;
+        const forward = new CANNON.Vec3(0, 0, -1);
+        const up = new CANNON.Vec3(0, 1, 0);
+        quat.vmult(forward, forward);
+        quat.vmult(up, up);
+        const distance = 4;
+        const height = 2.5;
+        const targetOffset = new CANNON.Vec3()
+            .add(forward.scale(-distance))
+            .add(up.scale(height));
+        const targetPos = new THREE.Vector3(pos.x, pos.y, pos.z).add(
+            new THREE.Vector3(targetOffset.x, targetOffset.y, targetOffset.z)
+        );
+        camera.position.lerp(targetPos, 0.05);
+        orbitControls.target.set(pos.x, pos.y, pos.z);
     }
 
     orbitControls.update();
@@ -947,9 +1178,16 @@ async function initializeApp() {
     await setupUIAndEvents();
     loadingManager.update(4, 1.0);
 
+    // Add shooting listener after renderer exists
+    renderer.domElement.addEventListener('mousedown', (e) => {
+        if (activeMode === 'player' && e.button === 0) {
+            shootBullets();
+        }
+    });
+
     loadingManager.complete();
 
-    // Start animation after everything is ready
+    // Start animation
     animate();
 
     // Prevent default touch actions on canvas
